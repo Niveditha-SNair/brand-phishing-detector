@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Advanced Brand Phishing Scanner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #070b14;
+  --card: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.12);
+  --blue: #00d4ff;
+  --purple: #8b5cf6;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+
+  --risk-high: #ef4444;
+  --risk-medium: #facc15;
+  --risk-low: #22c55e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #0b1220, var(--bg));
+  font-family: Inter, sans-serif;
+  color: var(--text);
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 32px 20px 80px;
+}
+
+/* ---------- HEADER ---------- */
+
+h1 {
+  text-align: center;
+  font-size: 40px;
+  background: linear-gradient(90deg, var(--blue), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--muted);
+  margin-bottom: 40px;
+}
+
+/* ---------- TABS ---------- */
+
+.tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  flex: 1;
+  padding: 14px;
+  text-align: center;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: .3s;
+}
+
+.tab.active {
+  color: white;
+  background: linear-gradient(135deg, rgba(0,212,255,.25), rgba(139,92,246,.25));
+  border-color: var(--blue);
+}
+
+/* ---------- CARD ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+/* ---------- INPUTS ---------- */
+
+input, textarea {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,.35);
+  color: white;
+  font-size: 14px;
+}
+
+textarea { min-height: 100px; }
+
+/* ---------- BUTTON ---------- */
+
+button {
+  margin-top: 14px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--blue), var(--purple));
+}
+
+button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* ---------- RESULTS ---------- */
+
+.results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px,1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.result-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px);
+  transition: .3s;
+}
+
+.result-card.high {
+  border-color: var(--risk-high);
+  box-shadow: 0 0 25px rgba(239,68,68,.25);
+}
+
+.result-card.medium {
+  border-color: var(--risk-medium);
+  box-shadow: 0 0 25px rgba(250,204,21,.25);
+}
+
+.result-card.low {
+  border-color: var(--risk-low);
+  box-shadow: 0 0 25px rgba(34,197,94,.25);
+}
+
+.domain {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- RISK BAR ---------- */
+
+.risk-bar {
+  height: 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.1);
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.risk-fill {
+  height: 100%;
+  transition: width .6s ease;
+}
+
+ul {
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+/* ---------- ACTIONS ---------- */
+
+.actions {
+  margin-top: 30px;
+  text-align: right;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Advanced Brand Phishing Scanner</h1>
+<p class="subtitle">Detect brand abuse, typosquatting & phishing domains</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchMode('brand', this)">Brand Monitoring</div>
+  <div class="tab" onclick="switchMode('manual', this)">Manual Domain Investigation</div>
+</div>
+
+<div class="card">
+  <div id="brandMode">
+    <input id="brand" placeholder="Enter brand name (e.g. Google)">
+    <button onclick="scan()">Scan Brand</button>
+  </div>
+
+  <div id="manualMode" style="display:none">
+    <textarea id="domains" placeholder="google-login.com, g00gle.com"></textarea>
+    <button onclick="scan()">Scan Domains</button>
+  </div>
+</div>
+
+<div class="results" id="results"></div>
+
+<div class="actions">
+  <button id="download" disabled onclick="downloadPDF()">Download PDF Report</button>
+</div>
+
+</div>
+
+<script>
+let mode = "brand";
+let lastResults = [];
+
+function switchMode(m, el) {
+  mode = m;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  brandMode.style.display = m === "brand" ? "block" : "none";
+  manualMode.style.display = m === "manual" ? "block" : "none";
+}
+
+async function scan() {
+  results.innerHTML = "Scanning...";
+  download.disabled = true;
+
+  const payload = mode === "brand"
+    ? { mode, brand: brand.value }
+    : { mode, domains: domains.value };
+
+  const res = await fetch("/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  lastResults = data.results;
+  renderResults(data.results);
+  download.disabled = false;
+}
+
+function renderResults(data) {
+  results.innerHTML = "";
+
+  data.forEach(d => {
+    let severity, color;
+
+    if (d.risk >= 70) {
+      severity = "high";
+      color = "var(--risk-high)";
+    } else if (d.risk >= 40) {
+      severity = "medium";
+      color = "var(--risk-medium)";
+    } else {
+      severity = "low";
+      color = "var(--risk-low)";
+    }
+
+    const card = document.createElement("div");
+    card.className = `result-card ${severity}`;
+
+    card.innerHTML = `
+      <div class="domain">${d.domain}</div>
+      <div class="meta">DNS: ${d.dns} | SSL: ${d.ssl}</div>
+
+      <div class="risk-bar">
+        <div class="risk-fill" style="width:${d.risk}%;background:${color}"></div>
+      </div>
+
+      <ul>${d.findings.map(f => `<li>${f}</li>`).join("")}</ul>
+    `;
+
+    results.appendChild(card);
+  });
+}
+
+async function downloadPDF() {
+  const res = await fetch("/download-report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(lastResults)
+  });
+
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "phishing_report.pdf";
+  a.click();
+}
+</script>
+
+</body>
+</html>
